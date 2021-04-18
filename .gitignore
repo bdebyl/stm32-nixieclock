@@ -1,0 +1,4 @@
+*.d
+*.map
+*.size
+*.elf
