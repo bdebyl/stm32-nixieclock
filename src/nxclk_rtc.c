@@ -21,7 +21,8 @@ void nxclk_rtc_cal_init(void) {
     rtc_set_am_format();
 
     // Load time and date values from the passed defines (see Makefile)
-    rtc_calendar_set_date((uint8_t)TIME_YR, (uint8_t)TIME_MO, (uint8_t)TIME_DAY, RTC_DR_WDU_MON);
+    rtc_calendar_set_date((uint8_t)TIME_YR, (uint8_t)TIME_MO, (uint8_t)TIME_DAY,
+                          RTC_DR_WDU_MON);
     rtc_time_set_time((uint8_t)TIME_HR, (uint8_t)TIME_MIN, 0, true);
 
     // Exit initialization mode
@@ -33,7 +34,6 @@ void nxclk_rtc_cal_init(void) {
 }
 
 void nxclk_rtc_init(void) {
-    rcc_periph_clock_enable(RCC_RTC);
     rcc_periph_clock_enable(RCC_PWR);
 
     // Send reset pulse to RCC_BDCR register
@@ -42,13 +42,13 @@ void nxclk_rtc_init(void) {
     // Disable BDCR write protection
     pwr_disable_backup_domain_write_protect();
 
-    // Disable and wait for RCC_LSI
-    // TODO: Update this to use RCC_LSE
-    rcc_osc_on(RCC_LSI);
-    rcc_wait_for_osc_ready(RCC_LSI);
+    // Disable and wait for RCC_LSE
+    // TODO(bastian): Update this to use RCC_LSE on actual board
+    rcc_osc_on(RCC_LSE);
+    rcc_wait_for_osc_ready(RCC_LSE);
 
     // Set up the RTC clock itself
-    rcc_set_rtc_clock_source(RCC_LSI);
+    rcc_set_rtc_clock_source(RCC_LSE);
     rcc_enable_rtc_clock();
 
     // Set the date and time

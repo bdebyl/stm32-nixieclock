@@ -116,4 +116,4 @@ clean:
 
 .PHONY: lint
 lint:
-	cpplint --filter=-whitespace/semicolon main.{c,h} src/*.{c,h}
+	cpplint main.{c,h} src/*.{c,h}
