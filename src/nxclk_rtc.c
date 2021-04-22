@@ -5,6 +5,12 @@
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/rtc.h>
 
+uint8_t nxclk_rtc_get_minute(void) {
+    return ((RTC_TR & (RTC_TR_MNU_MASK << RTC_TR_MNU_SHIFT)) >>
+            RTC_TR_MNU_SHIFT) &
+           RTC_TR_MNU_MASK;
+}
+
 void nxclk_rtc_cal_init(void) {
     // Disable RTC register write protection
     rtc_unlock();

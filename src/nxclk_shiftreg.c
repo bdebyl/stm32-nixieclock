@@ -6,6 +6,9 @@
 #include <libopencm3/stm32/rtc.h>
 #include <libopencm3/stm32/spi.h>
 
+static volatile uint8_t digit[4];
+static volatile uint8_t reg_bytes[5];
+
 // PA0: ~OE
 // PA1: ~RES
 // PA2: LCLK
@@ -77,13 +80,11 @@ void nxclk_shiftout(uint16_t digits) {
     // using 4 10-bit wide values converted to 5 8-bit wide registers
     //
     // See: ../doc/time_shift_registers.pdf
-    uint8_t digit[4];
     digit[0] = (digits >> 12) & 0x0F;
     digit[1] = (digits >> 8) & 0x0F;
     digit[2] = (digits >> 4) & 0x0F;
     digit[3] = digits & 0x0F;
 
-    uint8_t reg_bytes[5];
     reg_bytes[0] = (1 << (digit[3] - 2)) & 0xFF;
     reg_bytes[1] = ((1 << digit[2]) & 0xFC) | ((1 << digit[3]) & 0x03);
     reg_bytes[2] = ((1 << (digit[1] + 2)) & 0xF0) |
