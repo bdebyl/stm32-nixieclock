@@ -34,26 +34,30 @@ void nxclk_rtc_cal_init(void) {
 }
 
 void nxclk_rtc_init(void) {
-    rcc_periph_clock_enable(RCC_PWR);
+    // Check if the BKP RTC register has data indicating it has already been
+    // initialized
+    if (NXCLK_RTC_BKPR != NXCLK_RTC_BKPR_PHRASE) {
+        rcc_periph_clock_enable(RCC_PWR);
 
-    // Send reset pulse to RCC_BDCR register
-    rcc_periph_reset_pulse(RST_BDCR);
+        // Send reset pulse to RCC_BDCR register
+        rcc_periph_reset_pulse(RST_BDCR);
 
-    // Disable BDCR write protection
-    pwr_disable_backup_domain_write_protect();
+        // Disable BDCR write protection
+        pwr_disable_backup_domain_write_protect();
 
-    // Disable and wait for RCC_LSE
-    // TODO(bastian): Update this to use RCC_LSE on actual board
-    rcc_osc_on(RCC_LSE);
-    rcc_wait_for_osc_ready(RCC_LSE);
+        // Disable and wait for RCC_LSE
+        rcc_osc_on(RCC_LSE);
+        rcc_wait_for_osc_ready(RCC_LSE);
 
-    // Set up the RTC clock itself
-    rcc_set_rtc_clock_source(RCC_LSE);
-    rcc_enable_rtc_clock();
+        // Set up the RTC clock itself
+        rcc_set_rtc_clock_source(RCC_LSE);
+        rcc_enable_rtc_clock();
 
-    // Set the date and time
-    nxclk_rtc_cal_init();
+        // Set the date and time
+        nxclk_rtc_cal_init();
 
-    pwr_enable_backup_domain_write_protect();
+        NXCLK_RTC_BKPR = NXCLK_RTC_BKPR_PHRASE;
+        pwr_enable_backup_domain_write_protect();
+    }
 }
 

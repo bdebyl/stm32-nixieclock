@@ -49,8 +49,6 @@ void nxclk_shiftreg_init() {
     // Set ~OE to low (active)
     gpio_clear(NX_GPIO_REG, NX_OE);
 }
-
-// TODO(bastian): Change this to take struct or values
 void nxclk_shiftout_time() {
     // Get initial time to avoid re-reading register
     uint32_t rtc_tr = RTC_TR;
@@ -70,32 +68,46 @@ void nxclk_shiftout_time() {
         ((rtc_tr & (RTC_TR_MNU_MASK << RTC_TR_MNU_SHIFT)) >> RTC_TR_MNU_SHIFT) &
         0x3FF;
 
-    // Shift pattern is 8-8-8-8-8, MNU must be first out, using 4 10-bit wide
-    // values converted to 5 8-bit wide registers
+    nxclk_shiftout((ht_shift << 12) | (hu_shift << 8) | (mnt_shift << 4) |
+                   mnu_shift);
+}
+// TODO(bastian): Change this to take struct or values
+void nxclk_shiftout(uint16_t digits) {
+    // Shift pattern is 8-8-8-8-8, least significant number must be first out,
+    // using 4 10-bit wide values converted to 5 8-bit wide registers
     //
     // See: ../doc/time_shift_registers.pdf
-    uint8_t shift_arr[5];
+    uint8_t digit[4];
+    digit[0] = (digits >> 12) & 0x0F;
+    digit[1] = (digits >> 8) & 0x0F;
+    digit[2] = (digits >> 4) & 0x0F;
+    digit[3] = digits & 0x0F;
 
-    shift_arr[0] = (1 << (mnu_shift - 2)) & 0xFF;
-    shift_arr[1] = ((1 << mnt_shift) & 0x3C) | ((1 << mnu_shift) & 0x03);
-    shift_arr[2] =
-        ((1 << (hu_shift + 2)) & 0xF0) | ((1 << (mnt_shift + 2)) & 0x0C);
-    shift_arr[3] = ((1 << hu_shift - 6) & 0x0F) |
-                   ((1 << (hu_shift + 4)) & 0x30) |
-                   ((1 << (ht_shift + 4)) & 0x40);
-    shift_arr[4] = ((1 << (ht_shift + 6)) & 0xC0);
+    uint8_t reg_bytes[5];
+    reg_bytes[0] = (1 << (digit[3] - 2)) & 0xFF;
+    reg_bytes[1] = ((1 << digit[2]) & 0xFC) | ((1 << digit[3]) & 0x03);
+    reg_bytes[2] = ((1 << (digit[1] + 2)) & 0xF0) |
+                   ((1 << (digit[2] + 2)) & 0x0C) |
+                   ((1 << (digit[2] - 8)) & 0x03);
+    reg_bytes[3] = ((1 << (digit[1] - 6)) & 0x0F) |
+                   ((1 << (digit[1] + 4)) & 0x30) |
+                   ((1 << (digit[0] + 4)) & 0xC0);
+    reg_bytes[4] =
+        ((1 << (digit[0] + 6)) & 0xC0) | ((1 << (digit[0] - 4)) & 0x3F);
 
     // starts in reverse with MNU, ends at HT -- first out is MNU
     gpio_clear(NX_GPIO_REG, NX_LCLK);
 
     uint8_t i;
-    for (i = 0; i < sizeof(shift_arr) / sizeof(shift_arr[0]); i++) {
-        spi_send8(NX_SPI, shift_arr[i]);
+    for (i = 0; i < sizeof(reg_bytes) / sizeof(reg_bytes[0]); i++) {
+        spi_send8(NX_SPI, reg_bytes[i]);
 
         // Wait for byte to send before sending next byte
         while ((SPI_SR(NX_SPI) & SPI_SR_BSY))
             ;
     }
+    // TODO(bastian): Improve this, find out why the LE is still early even if
+    // SPI_SR_BSY is ongoing
     uint16_t j;
     for (j = 0; j < 0xFFFF; ++j) {
         __asm__("nop");

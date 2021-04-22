@@ -4,12 +4,20 @@
 #include <libopencm3/cm3/nvic.h>
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/rcc.h>
+#include <libopencm3/stm32/rtc.h>
 #include <stdint.h>
 
 #include "src/nxclk_hbdrv.h"
 #include "src/nxclk_hvctrl.h"
 #include "src/nxclk_rtc.h"
 #include "src/nxclk_shiftreg.h"
+
+static volatile uint8_t minute = 0;
+static uint8_t get_minute(void) {
+    return ((RTC_TR & (RTC_TR_MNU_MASK << RTC_TR_MNU_SHIFT)) >>
+            RTC_TR_MNU_SHIFT) &
+           RTC_TR_MNU_MASK;
+}
 
 int main(void) {
     /* rcc_clock_setup_in_hsi_out_48mhz(); */
@@ -27,6 +35,8 @@ int main(void) {
     // Initialize core functionalities
     nxclk_rtc_init();
     nxclk_shiftreg_init();
+    nxclk_shiftout_time();
+
     nxclk_hbdrv_init();
     nxclk_hvctrl_init();
 
@@ -37,11 +47,19 @@ int main(void) {
     nxclk_hbdrv_enable();
     nxclk_hvctrl_enable();
 
-    // XXX: DEBUG Shift out current time
-    nxclk_shiftout_time();
-
-    while (1)
-        ;
+    uint32_t i;
+    minute = get_minute();
+    while (1) {
+        // TODO(bastian): replace this with systick or another timer for
+        // efficiency
+        for (i = 0; i < 0xFFFF; ++i) {
+            __asm__("nop");
+        }
+        if (minute != get_minute()) {
+            nxclk_shiftout_time();
+            minute = get_minute();
+        }
+    }
 
     return 0;
 }

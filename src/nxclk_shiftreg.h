@@ -26,6 +26,7 @@
 
 void nxclk_shiftreg_init(void);
 void nxclk_shiftout_time(void);
+void nxclk_shiftout(uint16_t digits);
 
 #endif  // SRC_NXCLK_SHIFTREG_H_
 

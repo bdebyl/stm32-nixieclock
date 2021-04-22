@@ -92,7 +92,7 @@ GENERATED_BINARIES=$(BINARY).elf $(BINARY).bin $(BINARY).map
 %.elf %.map: $(OBJS) $(LDSCRIPT)
 	$(LD) $(TGT_LDFLAGS) $(LDFLAGS) $(OBJS) $(LDLIBS) -o $(*).elf
 
-%.o: %.c $(OPENCM3_DIR)/lib/lib$(LIBNAME).a
+%.o: %.c %.h $(OPENCM3_DIR)/lib/lib$(LIBNAME).a
 	$(CC) $(TGT_CFLAGS) $(CFLAGS)  -o $(*).o -c $(*).c
 
 %.size: %.elf
