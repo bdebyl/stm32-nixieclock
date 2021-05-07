@@ -5,6 +5,64 @@
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/rtc.h>
 
+/* BEGIN STATIC DEFS */
+static uint8_t _nxclk_rtc_get_hrs(void) {
+    return ((((RTC_TR & (RTC_TR_HT_MASK << RTC_TR_HT_SHIFT)) >>
+              RTC_TR_HT_SHIFT) &
+             RTC_TR_HT_MASK) *
+            10) +
+           (((RTC_TR & (RTC_TR_HU_MASK << RTC_TR_HU_SHIFT)) >>
+             RTC_TR_HU_SHIFT) &
+            RTC_TR_HU_MASK);
+}
+
+static uint8_t _nxclk_rtc_get_mins(void) {
+    return ((((RTC_TR & (RTC_TR_MNT_MASK << RTC_TR_MNT_SHIFT)) >>
+              RTC_TR_MNT_SHIFT) &
+             RTC_TR_MNT_MASK) *
+            10) +
+           (((RTC_TR & (RTC_TR_MNU_MASK << RTC_TR_MNU_SHIFT)) >>
+             RTC_TR_MNU_SHIFT) &
+            RTC_TR_MNU_MASK);
+}
+
+static uint8_t _nxclk_rtc_get_secs(void) {
+    return ((((RTC_TR & (RTC_TR_ST_MASK << RTC_TR_ST_SHIFT)) >>
+              RTC_TR_ST_SHIFT) &
+             RTC_TR_ST_MASK) *
+            10) +
+           (((RTC_TR & (RTC_TR_SU_MASK << RTC_TR_SU_SHIFT)) >>
+             RTC_TR_SU_SHIFT) &
+            RTC_TR_SU_MASK);
+}
+
+static void _nxclk_rtc_update_fmt(void) {
+    uint8_t h = _nxclk_rtc_get_hrs();
+
+    // Check what the notation is
+    if (RTC_CR & RTC_CR_FMT) {
+        // Convert 24h to 12h am/pm
+        if (h > 12) {
+            // Get new hour value
+            h = h - 12;
+
+            // Set the new value and the PM bit
+            rtc_time_set_time(h, _nxclk_rtc_get_mins(), _nxclk_rtc_get_secs(),
+                              false);
+        }
+    } else {
+        // Convert 12h am/pm to 24h
+        if (RTC_TR & RTC_TR_PM) {
+            h = h + 12;
+
+            // Set the new value and clear the PM bit
+            rtc_time_set_time(h, _nxclk_rtc_get_mins(), _nxclk_rtc_get_secs(),
+                              true);
+        }
+    }
+}
+/* END STATIC DEFS */
+
 uint8_t nxclk_rtc_get_minute(void) {
     return ((RTC_TR & (RTC_TR_MNU_MASK << RTC_TR_MNU_SHIFT)) >>
             RTC_TR_MNU_SHIFT) &
@@ -29,7 +87,12 @@ void nxclk_rtc_cal_init(void) {
     // Load time and date values from the passed defines (see Makefile)
     rtc_calendar_set_date((uint8_t)TIME_YR, (uint8_t)TIME_MO, (uint8_t)TIME_DAY,
                           RTC_DR_WDU_MON);
+
+    // TODO(bastian): Break this out to allow re-programming
     rtc_time_set_time((uint8_t)TIME_HR, (uint8_t)TIME_MIN, 0, true);
+
+    // Update 24h/12h display format
+    _nxclk_rtc_update_fmt();
 
     // Exit initialization mode
     rtc_clear_init_flag();
@@ -52,11 +115,15 @@ void nxclk_rtc_init(void) {
         pwr_disable_backup_domain_write_protect();
 
         // Disable and wait for RCC_LSE
+#ifndef DISCO
         rcc_osc_on(RCC_LSE);
         rcc_wait_for_osc_ready(RCC_LSE);
-
-        // Set up the RTC clock itself
         rcc_set_rtc_clock_source(RCC_LSE);
+#else
+        rcc_osc_on(RCC_LSI);
+        rcc_wait_for_osc_ready(RCC_LSI);
+        rcc_set_rtc_clock_source(RCC_LSI);
+#endif
         rcc_enable_rtc_clock();
 
         // Set the date and time

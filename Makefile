@@ -5,6 +5,7 @@ OPENCM3_DIR := ../libopencm3
 
 # Our output name
 BINARY = main
+DISCO ?= 0
 
 LDSCRIPT = stm32f0.ld
 
@@ -47,6 +48,9 @@ CSTD        ?= -std=c99
 
 # C flags
 CFLAGS       = $(TIME_DEFS)
+ifeq ($(DISCO), 1)
+CFLAGS      += -DDISCO
+endif
 TGT_CFLAGS  += $(OPT) $(CSTD) $(DEBUG)
 TGT_CFLAGS  += $(ARCH_FLAGS)
 TGT_CFLAGS  += -Wextra -Wshadow -Wimplicit-function-declaration

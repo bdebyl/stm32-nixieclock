@@ -7,6 +7,11 @@
 #include <libopencm3/stm32/spi.h>
 #include <stdint.h>
 
+// PA0: ~OE
+// PA1: ~RES
+// PA2: LCLK
+// PB13: CLK (SPI2_SCK)
+// PB15: D (SPI2_MOSI)
 #define NX_RCC_SPI (RCC_SPI2)
 #define NX_RCC_GPIO_SPI (RCC_GPIOB)
 #define NX_RCC_GPIO_REG (RCC_GPIOA)

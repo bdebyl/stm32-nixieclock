@@ -3,6 +3,7 @@
 #define SRC_NXCLK_RTC_H_
 
 #include <libopencm3/stm32/rtc.h>
+#include <stdint.h>
 
 #define NXCLK_RTC_BKPR RTC_BKPXR(0)
 #define NXCLK_RTC_BKPR_PHRASE (0x74696D65)

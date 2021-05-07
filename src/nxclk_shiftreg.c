@@ -9,11 +9,6 @@
 static volatile uint8_t digit[4];
 static volatile uint8_t reg_bytes[5];
 
-// PA0: ~OE
-// PA1: ~RES
-// PA2: LCLK
-// PB13: CLK (SPI2_SCK)
-// PB15: D (SPI2_MOSI)
 void nxclk_shiftreg_init() {
     rcc_periph_clock_enable(NX_RCC_SPI);
     rcc_periph_clock_enable(NX_RCC_GPIO_SPI);
@@ -52,6 +47,7 @@ void nxclk_shiftreg_init() {
     // Set ~OE to low (active)
     gpio_clear(NX_GPIO_REG, NX_OE);
 }
+
 void nxclk_shiftout_time() {
     // Get initial time to avoid re-reading register
     uint32_t rtc_tr = RTC_TR;
@@ -74,7 +70,7 @@ void nxclk_shiftout_time() {
     nxclk_shiftout((ht_shift << 12) | (hu_shift << 8) | (mnt_shift << 4) |
                    mnu_shift);
 }
-// TODO(bastian): Change this to take struct or values
+
 void nxclk_shiftout(uint16_t digits) {
     // Shift pattern is 8-8-8-8-8, least significant number must be first out,
     // using 4 10-bit wide values converted to 5 8-bit wide registers
@@ -102,18 +98,10 @@ void nxclk_shiftout(uint16_t digits) {
     uint8_t i;
     for (i = 0; i < sizeof(reg_bytes) / sizeof(reg_bytes[0]); i++) {
         spi_send8(NX_SPI, reg_bytes[i]);
-
-        // Wait for byte to send before sending next byte
-        while ((SPI_SR(NX_SPI) & SPI_SR_BSY))
-            ;
     }
-    // TODO(bastian): Improve this, find out why the LE is still early even if
-    // SPI_SR_BSY is ongoing
-    uint16_t j;
-    for (j = 0; j < 0xFFFF; ++j) {
-        __asm__("nop");
-    }
-    // end SPI transmission, latch to update outputs
+    // Wait for SPI transmission to finish
+    while (SPI_SR(NX_SPI) & SPI_SR_BSY)
+        ;
     gpio_set(NX_GPIO_REG, NX_LCLK);
 }
 
