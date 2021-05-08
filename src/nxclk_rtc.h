@@ -8,6 +8,8 @@
 #define NXCLK_RTC_BKPR RTC_BKPXR(0)
 #define NXCLK_RTC_BKPR_PHRASE (0x74696D65)
 
+uint8_t nxclk_rtc_get_hrs(void);
+uint8_t nxclk_rtc_get_mins(void);
 uint8_t nxclk_rtc_get_bcd_hours(void);
 uint8_t nxclk_rtc_get_bcd_minutes(void);
 void nxclk_rtc_cal_init(void);

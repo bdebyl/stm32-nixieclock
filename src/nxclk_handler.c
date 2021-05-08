@@ -6,10 +6,13 @@
 
 #include "nxclk_common.h"
 #include "nxclk_encoder.h"
+#include "nxclk_hbdrv.h"
 #include "nxclk_rtc.h"
 #include "nxclk_shiftreg.h"
 
 static volatile nxclk_mode _MODE = NXCLK_MODE_DISP_TIME;
+
+nxclk_mode nxclk_get_mode(void) { return _MODE; }
 
 void sys_tick_handler(void) {
     // Handle the function
@@ -25,7 +28,7 @@ void nxclk_handle(nxclk_mode mode) {
         case NXCLK_MODE_PROG_FMT:
             // Program format
             // NOT IMPLEMENTED
-            nxclk_shiftout(0x1234);
+            nxclk_shiftout(nxclk_encoder_get_bcd_value() > 1 ? 0x2400 : 0x1200);
 
             // set the shift register output to timer CNT for 24h/12h
             break;
@@ -34,14 +37,12 @@ void nxclk_handle(nxclk_mode mode) {
             nxclk_shiftout((uint16_t)((nxclk_encoder_get_bcd_value() << 8) |
                                       nxclk_rtc_get_bcd_minutes()));
 
-            // set the shift register output to timer CNT for Hours
-            // set the shift register output to timer CNT for Minutes
             break;
         case NXCLK_MODE_PROG_TIME_MIN:
             // Program the time (minutes)
+            nxclk_shiftout((uint16_t)((nxclk_rtc_get_bcd_hours() << 8) |
+                                      nxclk_encoder_get_bcd_value()));
 
-            // set the shift register output to timer CNT for Hours
-            // set the shift register output to timer CNT for Minutes
             break;
         case NXCLK_MODE_DEPOISON:
             // Cycle through all numbers every minute (use systick timer to
@@ -54,24 +55,45 @@ void nxclk_handle(nxclk_mode mode) {
     }
 }
 
+void nxclk_next_mode() {
+    switch (_MODE) {
+        case NXCLK_MODE_DISP_TIME:
+            nxclk_hbdrv_disable();
+
+            nxclk_set_mode(NXCLK_MODE_PROG_FMT);
+            break;
+        case NXCLK_MODE_PROG_FMT:
+            nxclk_set_mode(NXCLK_MODE_PROG_TIME_HR);
+            break;
+        case NXCLK_MODE_PROG_TIME_HR:
+            nxclk_set_mode(NXCLK_MODE_PROG_TIME_MIN);
+            break;
+        case NXCLK_MODE_PROG_TIME_MIN:
+            // TODO(bastian): don't forget to add RTC programming here
+            // Finished updating clock, program the final time then display
+            //
+            nxclk_hbdrv_enable();
+
+            nxclk_set_mode(NXCLK_MODE_DISP_TIME);
+            break;
+        default:
+            // Should reach here; default to displaying time
+            nxclk_set_mode(NXCLK_MODE_DISP_TIME);
+            break;
+    }
+}
+
 void nxclk_set_mode(nxclk_mode mode) {
     // Special actions for certain modes (menu selection)
     switch (mode) {
         case NXCLK_MODE_PROG_FMT:
-            // Re-set encoder timer and menu counter variable
-            // Set encoder timer count to 0
-            // Set menu counter max to 2 (12 or 24)
+            nxclk_encoder_set(3, 0);
             break;
         case NXCLK_MODE_PROG_TIME_HR:
-            // Re-set encoder timer and menu counter variable
-            // Set encoder timer count to 0
-            // Set menu counter max to 12 or 24
-            nxclk_encoder_set_max(24);
+            nxclk_encoder_set(23, nxclk_rtc_get_hrs());
             break;
         case NXCLK_MODE_PROG_TIME_MIN:
-            // Re-set encoder timer and menu counter variable
-            // Set encoder timer count to 0
-            // Set menu counter max to 60
+            nxclk_encoder_set(59, nxclk_rtc_get_mins());
             break;
         default:
             break;
@@ -79,7 +101,6 @@ void nxclk_set_mode(nxclk_mode mode) {
 
     _MODE = mode;
 }
-nxclk_mode nxclk_get_mode(void) { return _MODE; }
 
 void nxclk_handler_start() {
     // Set up the systick timer

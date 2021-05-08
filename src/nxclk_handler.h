@@ -5,6 +5,7 @@
 #include "nxclk_common.h"
 
 void nxclk_handle(nxclk_mode mode);
+void nxclk_next_mode(void);
 void nxclk_set_mode(nxclk_mode mode);
 nxclk_mode nxclk_get_mode(void);
 void nxclk_handler_start(void);

@@ -6,26 +6,6 @@
 #include <libopencm3/stm32/rtc.h>
 
 /* BEGIN STATIC DEFS */
-static uint8_t _nxclk_rtc_get_hrs(void) {
-    return ((((RTC_TR & (RTC_TR_HT_MASK << RTC_TR_HT_SHIFT)) >>
-              RTC_TR_HT_SHIFT) &
-             RTC_TR_HT_MASK) *
-            10) +
-           (((RTC_TR & (RTC_TR_HU_MASK << RTC_TR_HU_SHIFT)) >>
-             RTC_TR_HU_SHIFT) &
-            RTC_TR_HU_MASK);
-}
-
-static uint8_t _nxclk_rtc_get_mins(void) {
-    return ((((RTC_TR & (RTC_TR_MNT_MASK << RTC_TR_MNT_SHIFT)) >>
-              RTC_TR_MNT_SHIFT) &
-             RTC_TR_MNT_MASK) *
-            10) +
-           (((RTC_TR & (RTC_TR_MNU_MASK << RTC_TR_MNU_SHIFT)) >>
-             RTC_TR_MNU_SHIFT) &
-            RTC_TR_MNU_MASK);
-}
-
 static uint8_t _nxclk_rtc_get_secs(void) {
     return ((((RTC_TR & (RTC_TR_ST_MASK << RTC_TR_ST_SHIFT)) >>
               RTC_TR_ST_SHIFT) &
@@ -36,8 +16,9 @@ static uint8_t _nxclk_rtc_get_secs(void) {
             RTC_TR_SU_MASK);
 }
 
+// TODO(bastian): test this to make sure it works!
 static void _nxclk_rtc_update_fmt(void) {
-    uint8_t h = _nxclk_rtc_get_hrs();
+    uint8_t h = nxclk_rtc_get_hrs();
 
     // Check what the notation is
     if (RTC_CR & RTC_CR_FMT) {
@@ -47,7 +28,7 @@ static void _nxclk_rtc_update_fmt(void) {
             h = h - 12;
 
             // Set the new value and the PM bit
-            rtc_time_set_time(h, _nxclk_rtc_get_mins(), _nxclk_rtc_get_secs(),
+            rtc_time_set_time(h, nxclk_rtc_get_mins(), _nxclk_rtc_get_secs(),
                               false);
         }
     } else {
@@ -56,16 +37,40 @@ static void _nxclk_rtc_update_fmt(void) {
             h = h + 12;
 
             // Set the new value and clear the PM bit
-            rtc_time_set_time(h, _nxclk_rtc_get_mins(), _nxclk_rtc_get_secs(),
+            rtc_time_set_time(h, nxclk_rtc_get_mins(), _nxclk_rtc_get_secs(),
                               true);
         }
     }
 }
 /* END STATIC DEFS */
 
+uint8_t nxclk_rtc_get_hrs() {
+    return ((((RTC_TR & (RTC_TR_HT_MASK << RTC_TR_HT_SHIFT)) >>
+              RTC_TR_HT_SHIFT) &
+             RTC_TR_HT_MASK) *
+            10) +
+           (((RTC_TR & (RTC_TR_HU_MASK << RTC_TR_HU_SHIFT)) >>
+             RTC_TR_HU_SHIFT) &
+            RTC_TR_HU_MASK);
+}
+
+uint8_t nxclk_rtc_get_mins() {
+    return ((((RTC_TR & (RTC_TR_MNT_MASK << RTC_TR_MNT_SHIFT)) >>
+              RTC_TR_MNT_SHIFT) &
+             RTC_TR_MNT_MASK) *
+            10) +
+           (((RTC_TR & (RTC_TR_MNU_MASK << RTC_TR_MNU_SHIFT)) >>
+             RTC_TR_MNU_SHIFT) &
+            RTC_TR_MNU_MASK);
+}
+
 uint8_t nxclk_rtc_get_bcd_hours() {
-    return (((RTC_TR & (RTC_TR_HT_MASK << RTC_TR_HT_SHIFT)) << 4) & 0xF0) |
-           ((RTC_TR & (RTC_TR_HU_MASK << RTC_TR_HU_SHIFT)) & 0x0F);
+    return ((((RTC_TR & (RTC_TR_HT_MASK << RTC_TR_HT_SHIFT)) >> RTC_TR_HT_SHIFT)
+             << 4) &
+            0xF0) |
+           (((RTC_TR & (RTC_TR_HU_MASK << RTC_TR_HU_SHIFT)) >>
+             RTC_TR_HU_SHIFT) &
+            0x0F);
 }
 
 uint8_t nxclk_rtc_get_bcd_minutes() {
