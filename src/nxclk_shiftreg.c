@@ -48,6 +48,7 @@ void nxclk_shiftreg_init() {
     gpio_clear(NX_GPIO_REG, NX_OE);
 }
 
+// TODO(bastian): this needs to be pulled out to RTC or handler
 void nxclk_shiftout_time() {
     // Get initial time to avoid re-reading register
     uint32_t rtc_tr = RTC_TR;

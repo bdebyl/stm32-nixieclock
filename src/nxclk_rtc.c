@@ -63,10 +63,19 @@ static void _nxclk_rtc_update_fmt(void) {
 }
 /* END STATIC DEFS */
 
-uint8_t nxclk_rtc_get_minute(void) {
-    return ((RTC_TR & (RTC_TR_MNU_MASK << RTC_TR_MNU_SHIFT)) >>
-            RTC_TR_MNU_SHIFT) &
-           RTC_TR_MNU_MASK;
+uint8_t nxclk_rtc_get_bcd_hours() {
+    return (((RTC_TR & (RTC_TR_HT_MASK << RTC_TR_HT_SHIFT)) << 4) & 0xF0) |
+           ((RTC_TR & (RTC_TR_HU_MASK << RTC_TR_HU_SHIFT)) & 0x0F);
+}
+
+uint8_t nxclk_rtc_get_bcd_minutes() {
+    return ((((RTC_TR & (RTC_TR_MNT_MASK << RTC_TR_MNT_SHIFT)) >>
+              RTC_TR_MNT_SHIFT)
+             << 4) &
+            0xF0) |
+           (((RTC_TR & (RTC_TR_MNU_MASK << RTC_TR_MNU_SHIFT)) >>
+             RTC_TR_MNU_SHIFT) &
+            0x0F);
 }
 
 void nxclk_rtc_cal_init(void) {

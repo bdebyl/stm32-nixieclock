@@ -37,9 +37,6 @@ int main(void) {
     // Start the show!
     nxclk_tubes_cycle_and_start();
 
-    // Set MCU OK LED to verify initialization passed
-    nxclk_set_mcu_ok();
-
     while (1)
         ;
 

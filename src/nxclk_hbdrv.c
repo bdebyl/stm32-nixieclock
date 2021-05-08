@@ -83,10 +83,10 @@ void nxclk_hbdrv_enable() {
 }
 
 void nxclk_hbdrv_disable() {
-    timer_disable_irq(HBDRV_TIM, TIM_DIER_CC1IE | TIM_DIER_CC2IE |
-                                     TIM_DIER_CC3IE | TIM_DIER_UIE);
-    timer_disable_update_event(HBDRV_TIM);
-
-    nvic_disable_irq(HBDRV_NVIC_IRQ);
     timer_disable_counter(HBDRV_TIM);
+    nvic_disable_irq(HBDRV_NVIC_IRQ);
+
+    // Re-set the state of the h-bridge
+    gpio_clear(HBDRV_GPIO_REG, HBDRV_GPIO_P);
+    gpio_clear(HBDRV_GPIO_REG, HBDRV_GPIO_N);
 }

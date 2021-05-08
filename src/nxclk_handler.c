@@ -5,6 +5,8 @@
 #include <libopencm3/cm3/systick.h>
 
 #include "nxclk_common.h"
+#include "nxclk_encoder.h"
+#include "nxclk_rtc.h"
 #include "nxclk_shiftreg.h"
 
 static volatile nxclk_mode _MODE = NXCLK_MODE_DISP_TIME;
@@ -23,11 +25,20 @@ void nxclk_handle(nxclk_mode mode) {
         case NXCLK_MODE_PROG_FMT:
             // Program format
             // NOT IMPLEMENTED
+            nxclk_shiftout(0x1234);
 
             // set the shift register output to timer CNT for 24h/12h
             break;
-        case NXCLK_MODE_PROG_TIME:
-            // Program the time
+        case NXCLK_MODE_PROG_TIME_HR:
+            // Program the time (hours)
+            nxclk_shiftout((uint16_t)((nxclk_encoder_get_bcd_value() << 8) |
+                                      nxclk_rtc_get_bcd_minutes()));
+
+            // set the shift register output to timer CNT for Hours
+            // set the shift register output to timer CNT for Minutes
+            break;
+        case NXCLK_MODE_PROG_TIME_MIN:
+            // Program the time (minutes)
 
             // set the shift register output to timer CNT for Hours
             // set the shift register output to timer CNT for Minutes
@@ -43,7 +54,32 @@ void nxclk_handle(nxclk_mode mode) {
     }
 }
 
-void nxclk_set_mode(nxclk_mode mode) { _MODE = mode; }
+void nxclk_set_mode(nxclk_mode mode) {
+    // Special actions for certain modes (menu selection)
+    switch (mode) {
+        case NXCLK_MODE_PROG_FMT:
+            // Re-set encoder timer and menu counter variable
+            // Set encoder timer count to 0
+            // Set menu counter max to 2 (12 or 24)
+            break;
+        case NXCLK_MODE_PROG_TIME_HR:
+            // Re-set encoder timer and menu counter variable
+            // Set encoder timer count to 0
+            // Set menu counter max to 12 or 24
+            nxclk_encoder_set_max(24);
+            break;
+        case NXCLK_MODE_PROG_TIME_MIN:
+            // Re-set encoder timer and menu counter variable
+            // Set encoder timer count to 0
+            // Set menu counter max to 60
+            break;
+        default:
+            break;
+    }
+
+    _MODE = mode;
+}
+nxclk_mode nxclk_get_mode(void) { return _MODE; }
 
 void nxclk_handler_start() {
     // Set up the systick timer

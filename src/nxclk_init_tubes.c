@@ -5,6 +5,7 @@
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/timer.h>
 
+#include "nxclk_common.h"
 #include "nxclk_handler.h"
 #include "nxclk_shiftreg.h"
 
@@ -23,6 +24,7 @@ void tim14_isr(void) {
 
             // Digit cycling complete, enable handler (systick)
             nxclk_handler_start();
+            nxclk_set_mcu_ok();
         }
 
         timer_clear_flag(TIM14, TIM_SR_UIF);
@@ -33,7 +35,7 @@ void nxclk_tubes_init() {
     // Initial clock test
     rcc_periph_clock_enable(RCC_TIM14);
     timer_set_prescaler(TIM14, 48000);
-    timer_set_period(TIM14, 600);
+    timer_set_period(TIM14, 300);
     timer_enable_update_event(TIM14);
     timer_update_on_any(TIM14);
     timer_enable_irq(TIM14, TIM_DIER_UIE);
