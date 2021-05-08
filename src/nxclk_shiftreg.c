@@ -6,6 +6,10 @@
 #include <libopencm3/stm32/rtc.h>
 #include <libopencm3/stm32/spi.h>
 
+// Set initial value of previous register value to ensure 0x0000 can be shifted
+// in first during redundancy check of nxclk_shiftout()
+static volatile uint16_t _nx_reg_p = 0xFFFF;
+
 static volatile uint8_t digit[4];
 static volatile uint8_t reg_bytes[5];
 
@@ -73,36 +77,43 @@ void nxclk_shiftout_time() {
 }
 
 void nxclk_shiftout(uint16_t digits) {
-    // Shift pattern is 8-8-8-8-8, least significant number must be first out,
-    // using 4 10-bit wide values converted to 5 8-bit wide registers
-    //
-    // See: ../doc/time_shift_registers.pdf
-    digit[0] = (digits >> 12) & 0x0F;
-    digit[1] = (digits >> 8) & 0x0F;
-    digit[2] = (digits >> 4) & 0x0F;
-    digit[3] = digits & 0x0F;
+    // Redundancy check; only perform shift-out if new value is not previous
+    // value avoiding repeated shifting and latching of the same value out
+    if (_nx_reg_p != digits) {
+        // Shift pattern is 8-8-8-8-8, least significant number must be first
+        // out, using 4 10-bit wide values converted to 5 8-bit wide registers
+        //
+        // See: ../doc/time_shift_registers.pdf
+        digit[0] = (digits >> 12) & 0x0F;
+        digit[1] = (digits >> 8) & 0x0F;
+        digit[2] = (digits >> 4) & 0x0F;
+        digit[3] = digits & 0x0F;
 
-    reg_bytes[0] = (1 << (digit[3] - 2)) & 0xFF;
-    reg_bytes[1] = ((1 << digit[2]) & 0xFC) | ((1 << digit[3]) & 0x03);
-    reg_bytes[2] = ((1 << (digit[1] + 2)) & 0xF0) |
-                   ((1 << (digit[2] + 2)) & 0x0C) |
-                   ((1 << (digit[2] - 8)) & 0x03);
-    reg_bytes[3] = ((1 << (digit[1] - 6)) & 0x0F) |
-                   ((1 << (digit[1] + 4)) & 0x30) |
-                   ((1 << (digit[0] + 4)) & 0xC0);
-    reg_bytes[4] =
-        ((1 << (digit[0] + 6)) & 0xC0) | ((1 << (digit[0] - 4)) & 0x3F);
+        reg_bytes[0] = (1 << (digit[3] - 2)) & 0xFF;
+        reg_bytes[1] = ((1 << digit[2]) & 0xFC) | ((1 << digit[3]) & 0x03);
+        reg_bytes[2] = ((1 << (digit[1] + 2)) & 0xF0) |
+                       ((1 << (digit[2] + 2)) & 0x0C) |
+                       ((1 << (digit[2] - 8)) & 0x03);
+        reg_bytes[3] = ((1 << (digit[1] - 6)) & 0x0F) |
+                       ((1 << (digit[1] + 4)) & 0x30) |
+                       ((1 << (digit[0] + 4)) & 0xC0);
+        reg_bytes[4] =
+            ((1 << (digit[0] + 6)) & 0xC0) | ((1 << (digit[0] - 4)) & 0x3F);
 
-    // starts in reverse with MNU, ends at HT -- first out is MNU
-    gpio_clear(NX_GPIO_REG, NX_LCLK);
+        // starts in reverse with MNU, ends at HT -- first out is MNU
+        gpio_clear(NX_GPIO_REG, NX_LCLK);
 
-    uint8_t i;
-    for (i = 0; i < sizeof(reg_bytes) / sizeof(reg_bytes[0]); i++) {
-        spi_send8(NX_SPI, reg_bytes[i]);
+        uint8_t i;
+        for (i = 0; i < sizeof(reg_bytes) / sizeof(reg_bytes[0]); i++) {
+            spi_send8(NX_SPI, reg_bytes[i]);
+        }
+        // Wait for SPI transmission to finish
+        while (SPI_SR(NX_SPI) & SPI_SR_BSY)
+            ;
+        gpio_set(NX_GPIO_REG, NX_LCLK);
+
+        // Set register previous value to digit
+        _nx_reg_p = digits;
     }
-    // Wait for SPI transmission to finish
-    while (SPI_SR(NX_SPI) & SPI_SR_BSY)
-        ;
-    gpio_set(NX_GPIO_REG, NX_LCLK);
 }
 
