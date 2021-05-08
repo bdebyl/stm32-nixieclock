@@ -28,6 +28,8 @@ void exti4_15_isr(void) {
     }
 }
 
+uint32_t nxclk_encoder_get() { return timer_get_counter(TIM3); }
+
 uint8_t nxclk_encoder_get_bcd_value() {
     uint32_t count = timer_get_counter(TIM3);
     return (((count / 10) << 4) | (count % 10)) & 0xFF;

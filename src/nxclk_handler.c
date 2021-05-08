@@ -10,6 +10,9 @@
 #include "nxclk_rtc.h"
 #include "nxclk_shiftreg.h"
 
+static volatile uint8_t _TR_H = 0x00;
+static volatile uint8_t _TR_M = 0x00;
+
 static volatile nxclk_mode _MODE = NXCLK_MODE_DISP_TIME;
 
 nxclk_mode nxclk_get_mode(void) { return _MODE; }
@@ -35,13 +38,14 @@ void nxclk_handle(nxclk_mode mode) {
         case NXCLK_MODE_PROG_TIME_HR:
             // Program the time (hours)
             nxclk_shiftout((uint16_t)((nxclk_encoder_get_bcd_value() << 8) |
-                                      nxclk_rtc_get_bcd_minutes()));
+                                      ((_TR_M / 10) << 4) | ((_TR_M % 10))));
 
             break;
         case NXCLK_MODE_PROG_TIME_MIN:
             // Program the time (minutes)
-            nxclk_shiftout((uint16_t)((nxclk_rtc_get_bcd_hours() << 8) |
-                                      nxclk_encoder_get_bcd_value()));
+            nxclk_shiftout(
+                (uint16_t)((((_TR_H / 10) << 12) | (_TR_H % 10) << 8) |
+                           nxclk_encoder_get_bcd_value()));
 
             break;
         case NXCLK_MODE_DEPOISON:
@@ -59,6 +63,9 @@ void nxclk_next_mode() {
     switch (_MODE) {
         case NXCLK_MODE_DISP_TIME:
             nxclk_hbdrv_disable();
+            // Start the time programming; save current time (BCD?) to modify
+            _TR_H = nxclk_rtc_get_hrs();
+            _TR_M = nxclk_rtc_get_mins();
 
             nxclk_set_mode(NXCLK_MODE_PROG_FMT);
             break;
@@ -66,6 +73,8 @@ void nxclk_next_mode() {
             nxclk_set_mode(NXCLK_MODE_PROG_TIME_HR);
             break;
         case NXCLK_MODE_PROG_TIME_HR:
+            _TR_H = nxclk_encoder_get();
+
             nxclk_set_mode(NXCLK_MODE_PROG_TIME_MIN);
             break;
         case NXCLK_MODE_PROG_TIME_MIN:
@@ -90,10 +99,10 @@ void nxclk_set_mode(nxclk_mode mode) {
             nxclk_encoder_set(3, 0);
             break;
         case NXCLK_MODE_PROG_TIME_HR:
-            nxclk_encoder_set(23, nxclk_rtc_get_hrs());
+            nxclk_encoder_set(23, _TR_H);
             break;
         case NXCLK_MODE_PROG_TIME_MIN:
-            nxclk_encoder_set(59, nxclk_rtc_get_mins());
+            nxclk_encoder_set(59, _TR_M);
             break;
         default:
             break;
