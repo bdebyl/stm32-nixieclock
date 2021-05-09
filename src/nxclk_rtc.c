@@ -83,6 +83,43 @@ uint8_t nxclk_rtc_get_bcd_minutes() {
             0x0F);
 }
 
+void nxclk_rtc_prog_time(uint8_t hours, uint8_t minutes, bool use_am_notation) {
+    rcc_periph_clock_enable(RCC_PWR);
+
+    // Disable BDCR write protection
+    pwr_disable_backup_domain_write_protect();
+
+    // Disable RTC register write protection
+    rtc_unlock();
+
+    // Enter initialization mode; calendar stopped
+    rtc_set_init_flag();
+    /* RTC_ISR |= RTC_ISR_INIT; */
+    // Wait for confirmation of initialization mode (clock sync)
+    rtc_wait_for_init_ready();
+
+    if (use_am_notation) {
+        rtc_set_am_format();
+    } else {
+        rtc_set_pm_format();
+    }
+
+    rtc_time_set_time(hours, minutes, 0, use_am_notation);
+
+    // Update 24h/12h display format
+    _nxclk_rtc_update_fmt();
+
+    // Exit initialization mode
+    rtc_clear_init_flag();
+    rtc_enable_bypass_shadow_register();
+
+    // Enable the RTC register write protection
+    rtc_lock();
+
+    // Disable BDCR write protection
+    pwr_enable_backup_domain_write_protect();
+}
+
 void nxclk_rtc_cal_init(void) {
     // Disable RTC register write protection
     rtc_unlock();

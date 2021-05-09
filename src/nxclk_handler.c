@@ -10,6 +10,7 @@
 #include "nxclk_rtc.h"
 #include "nxclk_shiftreg.h"
 
+static volatile bool _TR_AM = true;
 static volatile uint8_t _TR_H = 0x00;
 static volatile uint8_t _TR_M = 0x00;
 
@@ -30,10 +31,18 @@ void nxclk_handle(nxclk_mode mode) {
             break;
         case NXCLK_MODE_PROG_FMT:
             // Program format
-            // NOT IMPLEMENTED
-            nxclk_shiftout(nxclk_encoder_get_bcd_value() > 1 ? 0x2400 : 0x1200);
 
             // set the shift register output to timer CNT for 24h/12h
+            if (nxclk_encoder_get_bcd_value() > 1) {
+                // Use AM time
+                nxclk_shiftout(0x2400);
+                if (!_TR_AM) _TR_AM = true;
+            } else {
+                // Use PM time
+                nxclk_shiftout(0x1200);
+                if (_TR_AM) _TR_AM = false;
+            }
+
             break;
         case NXCLK_MODE_PROG_TIME_HR:
             // Program the time (hours)
@@ -78,9 +87,10 @@ void nxclk_next_mode() {
             nxclk_set_mode(NXCLK_MODE_PROG_TIME_MIN);
             break;
         case NXCLK_MODE_PROG_TIME_MIN:
-            // TODO(bastian): don't forget to add RTC programming here
+            _TR_M = nxclk_encoder_get();
+
             // Finished updating clock, program the final time then display
-            //
+            nxclk_rtc_prog_time(_TR_H, _TR_M, _TR_AM);
             nxclk_hbdrv_enable();
 
             nxclk_set_mode(NXCLK_MODE_DISP_TIME);

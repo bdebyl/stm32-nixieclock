@@ -12,6 +12,7 @@ uint8_t nxclk_rtc_get_hrs(void);
 uint8_t nxclk_rtc_get_mins(void);
 uint8_t nxclk_rtc_get_bcd_hours(void);
 uint8_t nxclk_rtc_get_bcd_minutes(void);
+void nxclk_rtc_prog_time(uint8_t hours, uint8_t minutes, bool use_am_notation);
 void nxclk_rtc_cal_init(void);
 void nxclk_rtc_init(void);
 
