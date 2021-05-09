@@ -27,6 +27,9 @@
 
 void nxclk_hbdrv_seq_isr(uint16_t tim_sr_ccif);
 void nxclk_hbdrv_init(void);
+void nxclk_hbdrv_init_blink(void);
+void nxclk_hbdrv_start_blink(void);
+void nxclk_hbdrv_stop_blink(void);
 void nxclk_hbdrv_enable(void);
 void nxclk_hbdrv_disable(void);
 

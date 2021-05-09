@@ -16,7 +16,6 @@ static uint8_t _nxclk_rtc_get_secs(void) {
             RTC_TR_SU_MASK);
 }
 
-// TODO(bastian): test this to make sure it works!
 static void _nxclk_rtc_update_fmt(void) {
     uint8_t h = nxclk_rtc_get_hrs();
 
@@ -139,7 +138,6 @@ void nxclk_rtc_cal_init(void) {
     rtc_calendar_set_date((uint8_t)TIME_YR, (uint8_t)TIME_MO, (uint8_t)TIME_DAY,
                           RTC_DR_WDU_MON);
 
-    // TODO(bastian): Break this out to allow re-programming
     rtc_time_set_time((uint8_t)TIME_HR, (uint8_t)TIME_MIN, 0, true);
 
     // Update 24h/12h display format

@@ -72,6 +72,7 @@ void nxclk_next_mode() {
     switch (_MODE) {
         case NXCLK_MODE_DISP_TIME:
             nxclk_hbdrv_disable();
+            nxclk_hbdrv_stop_blink();
             // Start the time programming; save current time (BCD?) to modify
             _TR_H = nxclk_rtc_get_hrs();
             _TR_M = nxclk_rtc_get_mins();
@@ -92,6 +93,7 @@ void nxclk_next_mode() {
             // Finished updating clock, program the final time then display
             nxclk_rtc_prog_time(_TR_H, _TR_M, _TR_AM);
             nxclk_hbdrv_enable();
+            nxclk_hbdrv_start_blink();
 
             nxclk_set_mode(NXCLK_MODE_DISP_TIME);
             break;
@@ -122,6 +124,7 @@ void nxclk_set_mode(nxclk_mode mode) {
 }
 
 void nxclk_handler_start() {
+    nxclk_hbdrv_start_blink();
     // Set up the systick timer
     systick_set_clocksource(STK_CSR_CLKSOURCE_EXT);
     STK_CVR = 0;  // Clear the counter ensuring no prior values

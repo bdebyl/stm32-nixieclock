@@ -6,6 +6,7 @@
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/timer.h>
 
+static volatile uint8_t _hbdrv_blink_cnt = 0;
 volatile uint8_t _hbdrv_i = 0;
 const uint16_t nxclk_hbdr_seq[] = {TIM_SR_CC1IF, TIM_SR_CC2IF, TIM_SR_CC3IF,
                                    TIM_SR_UIF};
@@ -17,6 +18,26 @@ void tim2_isr(void) {
         if (timer_get_flag(HBDRV_TIM, nxclk_hbdr_seq[_hbdrv_i])) {
             nxclk_hbdrv_seq_isr(nxclk_hbdr_seq[_hbdrv_i]);
             timer_clear_flag(HBDRV_TIM, nxclk_hbdr_seq[_hbdrv_i]);
+        }
+    }
+}
+
+void tim16_isr(void) {
+    if (timer_get_flag(TIM16, TIM_SR_UIF)) {
+        timer_clear_flag(TIM16, TIM_SR_UIF);
+
+        // Count to 50
+        _hbdrv_blink_cnt++;
+
+        if (_hbdrv_blink_cnt > 50) {
+            // Toggle blink
+            if (TIM_CR1(HBDRV_TIM) & TIM_CR1_CEN) {
+                nxclk_hbdrv_disable();
+            } else {
+                nxclk_hbdrv_enable();
+            }
+
+            _hbdrv_blink_cnt = 0;
         }
     }
 }
@@ -71,7 +92,30 @@ void nxclk_hbdrv_init() {
     // Resets on Update event instead of using CC4 at near-max value of TIM_CNT
 
     nvic_set_priority(HBDRV_NVIC_IRQ, 1);
+
+    nxclk_hbdrv_init_blink();
 }
+
+void nxclk_hbdrv_init_blink() {
+    // TODO(bastian): break this out to func and header
+    // Seconds blinky
+    rcc_periph_clock_enable(RCC_TIM16);
+    timer_set_mode(TIM16, TIM_CR1_CKD_CK_INT, TIM_CR1_CMS_EDGE, TIM_CR1_DIR_UP);
+    timer_set_period(TIM16, 60000);
+    timer_set_prescaler(TIM16, 15);
+    timer_update_on_overflow(TIM16);
+    timer_enable_irq(TIM16, TIM_DIER_UIE);
+    nvic_enable_irq(NVIC_TIM16_IRQ);
+    timer_continuous_mode(TIM16);
+}
+
+void nxclk_hbdrv_start_blink() {
+    _hbdrv_blink_cnt = 0;
+    timer_set_counter(TIM16, 0);
+    timer_enable_counter(TIM16);
+}
+
+void nxclk_hbdrv_stop_blink() { timer_disable_counter(TIM16); }
 
 void nxclk_hbdrv_enable() {
     timer_enable_irq(HBDRV_TIM, TIM_DIER_CC1IE | TIM_DIER_CC2IE |
